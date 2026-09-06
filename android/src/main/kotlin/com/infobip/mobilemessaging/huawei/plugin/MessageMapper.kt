@@ -16,7 +16,7 @@ internal object MessageMapper {
             "silent" to message.isSilent,
             "category" to message.category,
             "customPayload" to channelSafeObject(message.customPayload),
-            "internalData" to null,
+            "internalData" to message.getInternalData(),
             "receivedTimestamp" to message.receivedTimestamp,
             "seenDate" to message.seenTimestamp.takeIf { it != 0L },
             "contentUrl" to message.contentUrl,

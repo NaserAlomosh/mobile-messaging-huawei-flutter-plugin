@@ -127,8 +127,8 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 
 `Message` mirrors the official shared notification model. Huawei-backed values
 include message presentation, timestamps, seen state, URL actions, custom
-payload, and Chat state. `originalPayload` and `internalData` remain nullable
-because Huawei 8.14.0 cannot provide the official platform-specific values.
+payload, internal data, and Chat state. `originalPayload` remains nullable
+because Huawei 8.14.0 cannot provide the iOS-specific value.
 `PushMessage` is a deprecated source-compatible alias.
 
 ### User
@@ -229,7 +229,7 @@ native `Date` representation without exposing `DateTime` in Dart.
 | `Message` | `sound` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
 | `Message` | `icon` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
 | `Message` | `category` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `internalData` | `String?` | `Not exposed by Huawei 8.14 Message` | `String?` | `String?` | **NULL_ON_HUAWEI** |
+| `Message` | `internalData` | `String?` | `Message.getInternalData()` | `String?` | `String?` | **EXACT** |
 | `Message` | `contentUrl` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
 | `Message` | `browserUrl` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
 | `Message` | `deeplink` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |

@@ -9,7 +9,8 @@ void main() {
     final message = PushMessageCodec.decode({
       'messageId': 'm1', 'title': 'Title', 'body': 'Body', 'sound': 'default',
       'vibrate': true, 'icon': 'push', 'silent': false, 'category': 'offer',
-      'customPayload': {'id': 7}, 'receivedTimestamp': 1788264000000,
+      'customPayload': {'id': 7}, 'internalData': '{"campaignId":"c1"}',
+      'receivedTimestamp': 1788264000000,
       'seenDate': 1788264060000, 'seen': true,
       'contentUrl': 'https://example.test/content',
       'browserUrl': 'https://example.test', 'deeplink': 'app://offer',
@@ -24,7 +25,7 @@ void main() {
     expect(message.seen, isTrue);
     expect(message.deeplink, 'app://offer');
     expect(message.originalPayload, isNull);
-    expect(message.internalData, isNull);
+    expect(message.internalData, '{"campaignId":"c1"}');
     expect(message.chat, isFalse);
   });
 
