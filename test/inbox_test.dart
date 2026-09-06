@@ -59,12 +59,12 @@ void main() {
           'body': 'Body',
           'topic': 'news',
           'seen': false,
-          'receivedTimestamp': '2026-09-01T12:00:00Z',
+          'receivedTimestamp': 1788264000000,
           'customPayload': {
             'nested': {'enabled': true},
           },
-          'deepLink': 'app://inbox',
-          'isSilent': true,
+          'deeplink': 'app://inbox',
+          'silent': true,
         },
       ],
     });
@@ -75,11 +75,11 @@ void main() {
     expect(inbox.messages.single.messageId, 'message-1');
     expect(
       inbox.messages.single.receivedTimestamp,
-      DateTime.utc(2026, 9, 1, 12),
+      1788264000000,
     );
-    expect(inbox.messages.single.customPayload['nested'], {'enabled': true});
+    expect(inbox.messages.single.customPayload?['nested'], {'enabled': true});
     expect(inbox.messages.single.seen, isFalse);
-    expect(inbox.messages.single.isSilent, isTrue);
+    expect(inbox.messages.single.silent, isTrue);
   });
 
   test('rejects conflicting or invalid topic filters', () {
@@ -200,7 +200,7 @@ void main() {
         'countTotalFiltered': 1,
         'countUnreadFiltered': 0,
         'messages': [
-          {'messageId': 'message', 'seen': false, 'isSilent': null},
+          {'messageId': 'message', 'seen': false, 'silent': 'no'},
         ],
       }),
       throwsFormatException,

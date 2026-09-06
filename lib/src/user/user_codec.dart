@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 
+import '../../infobip_mobilemessaging_huawei.dart' show Installation;
 import '../platform/channel_contract.dart';
+import '../installation/installation_codec.dart';
 import 'user.dart';
 
 abstract final class UserCodec {
@@ -31,24 +33,20 @@ abstract final class UserCodec {
         ChannelContract.lastName: attributes.lastName,
         ChannelContract.middleName: attributes.middleName,
         ChannelContract.gender: _encodeGender(attributes.gender),
-        ChannelContract.birthday: attributes.birthday == null
-            ? null
-            : _dateOnly(attributes.birthday!),
+        ChannelContract.birthday: _birthday(attributes.birthday),
         ChannelContract.tags: attributes.tags,
         ChannelContract.customAttributes: _encodeCustomAttributes(
           attributes.customAttributes,
         ),
       };
 
-  static Map<String, Object?> encode(User user) => <String, Object?>{
+  static Map<String, Object?> encode(UserData user) => <String, Object?>{
     ChannelContract.externalUserId: user.externalUserId,
     ChannelContract.firstName: user.firstName,
     ChannelContract.lastName: user.lastName,
     ChannelContract.middleName: user.middleName,
     ChannelContract.gender: _encodeGender(user.gender),
-    ChannelContract.birthday: user.birthday == null
-        ? null
-        : _dateOnly(user.birthday!),
+    ChannelContract.birthday: _birthday(user.birthday),
     ChannelContract.phones: user.phones,
     ChannelContract.emails: user.emails,
     ChannelContract.tags: user.tags,
@@ -57,24 +55,26 @@ abstract final class UserCodec {
     ),
   };
 
-  static User decode(Object? value) {
+  static UserData decode(Object? value) {
     if (value is! Map) {
       throw const FormatException('User payload must be a map.');
     }
     final map = value.cast<Object?, Object?>();
-    return User(
+    return UserData(
       externalUserId: _string(map, ChannelContract.externalUserId),
       firstName: _string(map, ChannelContract.firstName),
       lastName: _string(map, ChannelContract.lastName),
       middleName: _string(map, ChannelContract.middleName),
       gender: _gender(map[ChannelContract.gender]),
       birthday: _birthday(map[ChannelContract.birthday]),
+      type: _type(map[ChannelContract.type]),
       phones: _strings(map, ChannelContract.phones),
       emails: _strings(map, ChannelContract.emails),
       tags: _strings(map, ChannelContract.tags),
       customAttributes: _decodeCustomAttributes(
         map[ChannelContract.customAttributes],
       ),
+      installations: _installations(map[ChannelContract.installations]),
     );
   }
 
@@ -95,32 +95,47 @@ abstract final class UserCodec {
 
   static Gender? _gender(Object? value) => switch (value) {
     null => null,
-    'male' => Gender.male,
-    'female' => Gender.female,
-    String() => Gender.unknown,
+    'male' => Gender.Male,
+    'female' => Gender.Female,
+    String() => null,
     _ => throw const FormatException('gender must be a string.'),
   };
 
   static String? _encodeGender(Gender? value) => switch (value) {
     null => null,
-    Gender.male => 'male',
-    Gender.female => 'female',
-    Gender.unknown => throw PlatformException(
-      code: 'invalid_argument',
-      message: 'Gender.unknown cannot be sent to the native SDK.',
-    ),
+    Gender.Male => 'male',
+    Gender.Female => 'female',
   };
 
-  static DateTime? _birthday(Object? value) {
+  static Type? _type(Object? value) => switch (value) {
+    null => null,
+    'lead' => Type.LEAD,
+    'LEAD' => Type.LEAD,
+    'customer' => Type.CUSTOMER,
+    'CUSTOMER' => Type.CUSTOMER,
+    String() => null,
+    _ => throw const FormatException('type must be a string.'),
+  };
+
+  static List<Installation>? _installations(Object? value) {
+    if (value == null) return null;
+    if (value is! List) {
+      throw const FormatException('installations must be a list.');
+    }
+    return List.unmodifiable(value.map(InstallationCodec.decode));
+  }
+
+  static String? _birthday(Object? value) {
     if (value == null) return null;
     if (value is! String || !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
       throw const FormatException('birthday must use YYYY-MM-DD.');
     }
-    final parsed = DateTime.tryParse('${value}T00:00:00.000Z');
-    if (parsed == null || _dateOnly(parsed) != value) {
+    final parts = value.split('-').map(int.parse).toList();
+    final parsed = DateTime.utc(parts[0], parts[1], parts[2]);
+    if (_dateOnly(parsed) != value) {
       throw const FormatException('birthday is not a valid date.');
     }
-    return parsed;
+    return value;
   }
 
   static String _dateOnly(DateTime value) =>

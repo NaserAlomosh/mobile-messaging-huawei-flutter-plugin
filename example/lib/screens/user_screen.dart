@@ -18,7 +18,7 @@ class _UserScreenState extends State<UserScreen> {
   final _externalUserId = TextEditingController();
   bool _loading = false;
   String _result = 'No user operation performed.';
-  User? _user;
+  UserData? _user;
 
   Future<void> _run(Future<void> Function() operation) async {
     if (_loading) return;
@@ -39,19 +39,18 @@ class _UserScreenState extends State<UserScreen> {
     }
   }
 
-  void _setUser(User user, String operation) => setState(() {
+  void _setUser(UserData user, String operation) => setState(() {
     _user = user;
     _firstName.text = user.firstName ?? '';
     _lastName.text = user.lastName ?? '';
     _result = '$operation succeeded.\n${_describe(user)}';
   });
 
-  String _describe(User user) => [
+  String _describe(UserData user) => [
     'First name: ${user.firstName ?? 'not set'}',
     'Last name: ${user.lastName ?? 'not set'}',
     'Gender: ${user.gender?.name ?? 'not set'}',
-    'Birthday: '
-        '${user.birthday?.toIso8601String().split('T').first ?? 'not set'}',
+    'Birthday: ${user.birthday ?? 'not set'}',
     'Tags: ${user.tags?.length ?? 0}',
   ].join('\n');
 
@@ -121,7 +120,7 @@ class _UserScreenState extends State<UserScreen> {
                     : () => _run(() async {
                         final saved =
                             await InfobipMobileMessagingHuawei.saveUser(
-                              User(
+                              UserData(
                                 externalUserId: _user?.externalUserId,
                                 firstName: _firstName.text.trim(),
                                 lastName: _lastName.text.trim(),
@@ -143,7 +142,7 @@ class _UserScreenState extends State<UserScreen> {
           SectionCard(
             title: 'Personalization',
             description:
-                'Use a test identity with a development Infobip application. '
+                'Use a test identity with a non-production Infobip application. '
                 'Values are not persisted by this example.',
             children: [
               TextField(
@@ -163,16 +162,18 @@ class _UserScreenState extends State<UserScreen> {
                         : () => _run(() async {
                             final user =
                                 await InfobipMobileMessagingHuawei.personalize(
-                                  UserIdentity(
-                                    externalUserId: _externalUserId.text.trim(),
-                                  ),
-                                  UserAttributes(
-                                    firstName: _firstName.text.trim().isEmpty
-                                        ? null
-                                        : _firstName.text.trim(),
-                                    lastName: _lastName.text.trim().isEmpty
-                                        ? null
-                                        : _lastName.text.trim(),
+                                  PersonalizeContext(
+                                    userIdentity: UserIdentity(
+                                      externalUserId: _externalUserId.text.trim(),
+                                    ),
+                                    userAttributes: UserAttributes(
+                                      firstName: _firstName.text.trim().isEmpty
+                                          ? null
+                                          : _firstName.text.trim(),
+                                      lastName: _lastName.text.trim().isEmpty
+                                          ? null
+                                          : _lastName.text.trim(),
+                                    ),
                                   ),
                                 );
                             _setUser(user, 'Personalization');

@@ -65,6 +65,8 @@ abstract final class ChannelContract {
   static const lastName = 'lastName';
   static const middleName = 'middleName';
   static const gender = 'gender';
+  static const type = 'type';
+  static const installations = 'installations';
   static const birthday = 'birthday';
   static const phones = 'phones';
   static const emails = 'emails';
@@ -74,6 +76,16 @@ abstract final class ChannelContract {
   static const customValue = 'value';
   static const customDateType = 'date';
   static const pushRegistrationId = 'pushRegistrationId';
+  static const pushServiceToken = 'pushServiceToken';
+  static const pushServiceType = 'pushServiceType';
+  static const isPushRegistrationEnabled = 'isPushRegistrationEnabled';
+  static const appVersion = 'appVersion';
+  static const os = 'os';
+  static const osVersion = 'osVersion';
+  static const deviceTimezoneOffset = 'deviceTimezoneOffset';
+  static const applicationUserId = 'applicationUserId';
+  static const deviceName = 'deviceName';
+
   static const installationId = 'installationId';
   static const pushRegistrationEnabled = 'pushRegistrationEnabled';
   static const isPrimaryDevice = 'isPrimaryDevice';

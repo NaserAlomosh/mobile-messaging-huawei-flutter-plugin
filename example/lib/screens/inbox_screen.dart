@@ -31,7 +31,7 @@ class _InboxScreenState extends State<InboxScreen> {
     try {
       final inbox = await InfobipMobileMessagingHuawei.fetchInbox(
         externalUserId: _externalUserId.text.trim(),
-        options: InboxFilterOptions(
+        options: FilterOptions(
           limit: limit,
           topic: _topic.text.trim().isEmpty ? null : _topic.text.trim(),
         ),
@@ -62,7 +62,7 @@ class _InboxScreenState extends State<InboxScreen> {
     try {
       await InfobipMobileMessagingHuawei.setInboxMessagesSeen(
         externalUserId: _externalUserId.text.trim(),
-        messageIds: [message.messageId],
+        messageIds: [message.messageId ?? ''],
       );
       if (mounted) {
         setState(() => _result = 'Message marked seen on the server.');
@@ -83,7 +83,7 @@ class _InboxScreenState extends State<InboxScreen> {
   Future<void> _fetchAfterUpdate() async {
     final inbox = await InfobipMobileMessagingHuawei.fetchInbox(
       externalUserId: _externalUserId.text.trim(),
-      options: InboxFilterOptions(
+      options: FilterOptions(
         limit: int.tryParse(_limit.text.trim()),
         topic: _topic.text.trim().isEmpty ? null : _topic.text.trim(),
       ),
@@ -156,10 +156,10 @@ class _InboxScreenState extends State<InboxScreen> {
                       [
                         if (message.body != null) message.body!,
                         'Topic: ${message.topic ?? 'none'}',
-                        'Received: ${message.receivedTimestamp?.toLocal() ?? 'unknown'}',
+                        'Received: ${message.receivedTimestamp ?? 'unknown'}',
                       ].join('\n'),
                     ),
-                    trailing: message.seen
+                    trailing: message.seen == true
                         ? const Icon(
                             Icons.drafts_outlined,
                             semanticLabel: 'Seen',
