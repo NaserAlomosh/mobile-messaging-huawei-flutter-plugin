@@ -41,4 +41,52 @@ class ChatRuntimeEventBridgeTest {
 
         assertEquals(emptyList<Map<String, String>>(), emitted)
     }
+
+    @Test
+    fun `publishes successful chat loading result`() {
+        val emitted = mutableListOf<Map<String, String>>()
+        val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
+
+        bridge.publishResult(true, mapOf("event" to "chatLoaded")) { error("unexpected failure") }
+
+        assertEquals(listOf(mapOf("event" to "chatLoaded")), emitted)
+    }
+
+    @Test
+    fun `publishes successful connection resumed result`() {
+        val emitted = mutableListOf<Map<String, String>>()
+        val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
+
+        bridge.publishResult(
+            true,
+            mapOf("event" to "chatConnectionChanged", "value" to "CONNECTED"),
+        ) { error("unexpected failure") }
+
+        assertEquals("CONNECTED", emitted.single()["value"])
+    }
+
+    @Test
+    fun `publishes successful connection paused result`() {
+        val emitted = mutableListOf<Map<String, String>>()
+        val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
+
+        bridge.publishResult(
+            true,
+            mapOf("event" to "chatConnectionChanged", "value" to "DISCONNECTED"),
+        ) { error("unexpected failure") }
+
+        assertEquals("DISCONNECTED", emitted.single()["value"])
+    }
+
+    @Test
+    fun `failed result reports error without publishing successful event`() {
+        val emitted = mutableListOf<Map<String, String>>()
+        var failures = 0
+        val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
+
+        bridge.publishResult(false, mapOf("event" to "chatLoaded")) { failures++ }
+
+        assertEquals(emptyList<Map<String, String>>(), emitted)
+        assertEquals(1, failures)
+    }
 }
