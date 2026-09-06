@@ -341,7 +341,80 @@ void main() {
       expect(calls.last.method, 'sendContextualData');
       expect(calls.last.arguments, <String, Object>{
         'data': '{"source":"support"}',
+        'chatMultiThreadStrategy': 'ACTIVE',
       });
+    });
+
+    testWidgets('controller serializes every contextual data strategy', (
+      tester,
+    ) async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        calls.add(call);
+        return null;
+      });
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      for (final strategy in ChatMultithreadStrategies.values) {
+        const data = ' {"source":"support"}\n';
+        await controller.sendContextualDataWithStrategy(data, strategy);
+
+        expect(calls.last.method, 'sendContextualData');
+        expect(calls.last.arguments, <String, Object>{
+          'data': data,
+          'chatMultiThreadStrategy': strategy.name,
+        });
+      }
+    });
+
+    testWidgets('contextual data validation happens before channel invocation', (
+      tester,
+    ) async {
+      var invocationCount = 0;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel(channelName),
+        (_) async {
+          invocationCount++;
+          return null;
+        },
+      );
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+      final attachmentInvocationCount = invocationCount;
+
+      await expectLater(
+        controller.sendContextualDataWithStrategy('  '),
+        throwsArgumentError,
+      );
+      expect(invocationCount, attachmentInvocationCount);
+    });
+
+    testWidgets('contextual data native failures propagate unchanged', (
+      tester,
+    ) async {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel(channelName),
+        (call) async => throw PlatformException(
+          code: 'native_error',
+          message: 'Chat operation failed',
+        ),
+      );
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await expectLater(
+        controller.sendContextualDataWithStrategy('{}'),
+        throwsA(
+          isA<PlatformException>().having(
+            (error) => error.code,
+            'code',
+            'native_error',
+          ),
+        ),
+      );
     });
 
     testWidgets('controller sets and gets the component language', (

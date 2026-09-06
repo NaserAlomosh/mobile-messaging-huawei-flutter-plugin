@@ -25,6 +25,7 @@ abstract final class ChannelContract {
   static const message = 'message';
   static const text = 'text';
   static const data = 'data';
+  static const chatMultiThreadStrategy = 'chatMultiThreadStrategy';
   static const widgetTheme = 'widgetTheme';
   static const initialize = 'initialize';
   static const cleanup = 'cleanup';

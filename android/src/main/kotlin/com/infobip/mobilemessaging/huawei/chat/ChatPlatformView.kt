@@ -15,7 +15,6 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
-import org.infobip.mobile.messaging.chat.core.MultithreadStrategy
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetResult
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetView
 import org.infobip.mobile.messaging.chat.view.DefaultInAppChatFragmentEventsListener
@@ -229,8 +228,8 @@ internal class ChatPlatformView(
     }
 
     private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {
-        val data = try {
-            ChatMapper.contextualData(call.arguments)
+        val (data, strategy) = try {
+            ChatMapper.contextualData(call.arguments) to ChatMapper.contextualDataStrategy(call.arguments)
         } catch (error: IllegalArgumentException) {
             result.error("invalid_argument", error.message, null)
             return
@@ -238,7 +237,7 @@ internal class ChatPlatformView(
         runOnFragment(current, result) {
             current.sendContextualData(
                 data,
-                MultithreadStrategy.ACTIVE,
+                strategy,
             )
         }
     }

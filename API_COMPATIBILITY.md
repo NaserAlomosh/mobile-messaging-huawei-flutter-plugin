@@ -120,6 +120,41 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Raw Chat messages | **Intentionally omitted** | v1 does not expose raw component messages. |
 | Additional Chat runtime events | **Intentionally omitted** | Only stable v1 Chat events are exposed. |
 
+### Contextual Data Audit
+
+The public behavior was compared with the official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d`. Its public API defines
+`ChatMultithreadStrategies` with `ACTIVE`, `ALL`, and `ALL_PLUS_NEW`, keeps the
+boolean `sendContextualData` API deprecated, and defaults
+`sendContextualDataWithStrategy` to `ACTIVE`. Its Android implementation maps
+the public strategy to the Android Chat SDK multithread strategy. The iOS
+implementation is relevant to cross-platform parity, but this package remains
+Android/Huawei-only.
+
+Huawei Mobile Messaging SDK 8.14.0 source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` exposes
+`InAppChatFragment.sendContextualData(String, MultithreadStrategy)` and all
+three `MultithreadStrategy` values used below.
+
+| Official Flutter strategy | Huawei 8.14 native strategy | Classification | Semantics and requirements |
+| --- | --- | --- | --- |
+| `ACTIVE` | `MultithreadStrategy.ACTIVE` | **EXACT** | Applies to the active conversation. This is the default and the behavior of the package's pre-existing `sendContextualData(String)` API. |
+| `ALL` | `MultithreadStrategy.ALL` | **EXACT** | Applies to all existing conversations. It has multithread significance only when the configured widget is multithread. |
+| `ALL_PLUS_NEW` | `MultithreadStrategy.ALL_PLUS_NEW` | **EXACT** | Applies to all existing conversations and conversations created later. It has multithread significance only when the configured widget is multithread. |
+
+The operation remains view-scoped: a controller must be attached to a live
+`InAppChatFragment`. The plugin does not retain a global Fragment or force the
+widget into multithread mode. In single-thread mode, behavior remains entirely
+SDK-defined. Contextual data is opaque and forwarded byte-for-byte as a Dart
+`String`; empty or whitespace-only values continue to be rejected before the
+native call, preserving the package's existing contract.
+
+The existing `sendContextualData(String)` method remains source compatible and
+delegates to `ACTIVE`. Dart cannot overload that method with the official
+deprecated `sendContextualData(String, bool)` signature, so adding the boolean
+signature would break existing callers. `sendContextualDataWithStrategy` is the
+non-conflicting official-compatible API.
+
 ---
 
 ## Public Models
