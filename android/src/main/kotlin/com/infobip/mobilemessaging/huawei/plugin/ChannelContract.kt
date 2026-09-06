@@ -16,6 +16,7 @@ internal object ChannelContract {
     const val CHAT_GET_WIDGET_THEME = "getWidgetTheme"
     const val TEXT = "text"
     const val DATA = "data"
+    const val CHAT_MULTI_THREAD_STRATEGY = "chatMultiThreadStrategy"
     const val WIDGET_THEME = "widgetTheme"
     const val CHAT_VIEW_READY = "viewReady"
     const val CHAT_ON_ERROR = "onError"

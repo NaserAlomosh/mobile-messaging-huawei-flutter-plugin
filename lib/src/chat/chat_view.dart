@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +11,18 @@ import '../platform/channel_contract.dart';
 import 'chat_error.dart';
 import 'chat_event.dart';
 import 'chat_message_payload.dart';
+
+/// Determines which Chat threads receive contextual data.
+enum ChatMultithreadStrategies {
+  /// Applies contextual data to every existing thread.
+  ALL,
+
+  /// Applies contextual data to every existing thread and to new threads.
+  ALL_PLUS_NEW,
+
+  /// Applies contextual data to the active thread.
+  ACTIVE,
+}
 
 typedef InfobipHuaweiChatErrorCallback =
     void Function(InfobipHuaweiChatError error);
@@ -136,13 +150,29 @@ final class InfobipHuaweiChatController {
   ///
   /// Contextual data is not displayed as a normal Chat message.
   Future<void> sendContextualData(String data) async {
+    await sendContextualDataWithStrategy(data);
+  }
+
+  /// Sends opaque contextual data using [chatMultithreadStrategy].
+  ///
+  /// The controller must be attached to a live native Chat view. Huawei
+  /// applies the selected strategy according to the widget's thread mode.
+  Future<void> sendContextualDataWithStrategy(
+    String data, [
+    ChatMultithreadStrategies chatMultithreadStrategy =
+        ChatMultithreadStrategies.ACTIVE,
+  ]) async {
     if (data.trim().isEmpty) {
       throw ArgumentError.value(data, 'data', 'must not be empty');
     }
     final bridge = _requireBridge();
     await bridge.channel.invokeMethod<void>(
       ChannelContract.chatSendContextualData,
-      <String, Object>{ChannelContract.data: data},
+      <String, Object>{
+        ChannelContract.data: data,
+        ChannelContract.chatMultiThreadStrategy:
+            chatMultithreadStrategy.name,
+      },
     );
   }
 
