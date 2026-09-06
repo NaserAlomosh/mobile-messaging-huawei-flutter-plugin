@@ -88,6 +88,10 @@ internal class NativeEventBridge(
         return true
     }
 
+    fun emitChatException(payload: Map<String, String?>) {
+        emit(ChannelContract.CHAT_EXCEPTION, payload)
+    }
+
     @Synchronized
     fun detach() {
         if (registered) {

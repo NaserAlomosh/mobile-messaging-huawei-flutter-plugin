@@ -79,6 +79,7 @@ class InfobipMobileMessagingHuaweiPlugin :
                 clearPluginJwtState = {
                     inboxManager?.clearJwtState()
                     chatManager?.clearJwtProvider()
+                    chatManager?.clearExceptionHandler()
                 },
                 resetPluginState = {
                     initializer?.reset()
@@ -227,6 +228,15 @@ class InfobipMobileMessagingHuaweiPlugin :
 
             ChannelContract.SET_CHAT_JWT_PROVIDER -> {
                 val failure = chatManager?.setJwtProvider() ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_EXCEPTION_HANDLER -> {
+                val failure = chatManager?.setExceptionHandler(
+                    call.argument<Any?>(ChannelContract.ENABLED),
+                ) { payload -> eventBridge?.emitChatException(payload) }
+                    ?: return detached(result)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }

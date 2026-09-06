@@ -48,10 +48,13 @@ abstract final class ChannelContract {
   static const isPrimary = 'isPrimary';
   static const setJwt = 'setJwt';
   static const setChatJwtProvider = 'setChatJwtProvider';
+  static const setChatExceptionHandler = 'setChatExceptionHandler';
   static const resolveChatJwt = 'resolveChatJwt';
   static const rejectChatJwt = 'rejectChatJwt';
   static const jwt = 'jwt';
   static const error = 'error';
+  static const enabled = 'enabled';
+  static const name = 'name';
   static const getInstallation = 'getInstallation';
   static const fetchInstallation = 'fetchInstallation';
   static const saveInstallation = 'saveInstallation';
@@ -139,4 +142,5 @@ abstract final class ChannelContract {
   static const chatUnreadMessageCounterUpdated =
       'chat_unread_message_counter_updated';
   static const chatJwtRequested = 'chat_jwt_requested';
+  static const chatException = 'chat_exception';
 }

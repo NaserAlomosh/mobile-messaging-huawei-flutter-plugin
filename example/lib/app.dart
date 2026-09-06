@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
@@ -31,6 +33,14 @@ class _ExampleAppState extends State<ExampleApp> {
       await InfobipMobileMessagingHuawei.initialize(
         applicationCode: ExampleConfig.applicationCode,
       );
+      await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+        (exception) async {
+          debugPrint(
+            'Chat exception: name=${exception.name}, message=${exception.message}',
+          );
+        },
+        (_) => debugPrint('Chat exception handler failed'),
+      );
       if (mounted) setState(() => _state = InitializationState.initialized);
     } on PlatformException catch (error) {
       if (mounted) {
@@ -48,6 +58,12 @@ class _ExampleAppState extends State<ExampleApp> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(InfobipMobileMessagingHuawei.setChatExceptionHandler(null));
+    super.dispose();
   }
 
   @override

@@ -114,6 +114,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Send contextual data | **Adapted** | Requires an attached Chat view. |
 | Language | **Adapted** | View-scoped native widget configuration. |
 | Widget theme | **Adapted** | View-scoped native widget configuration. |
+| Chat exception handler | **Adapted** | `setChatExceptionHandler` maps Huawei `InAppChat.setExceptionHandler` exceptions to nullable `message` and `name` fields. A custom handler replaces Huawei's default exception presentation; passing `null` restores it. Android/Huawei only. |
 | Programmatic attachments | **Intentionally omitted** | Android URI ownership and permission semantics are not part of v1. |
 | Thread APIs | **Intentionally omitted** | Stable thread models are not exposed in v1. |
 | Raw Chat messages | **Intentionally omitted** | v1 does not expose raw component messages. |
@@ -163,11 +164,34 @@ limits.
 
 - `InfobipHuaweiChatMessagePayload`
 - `InfobipHuaweiChatError`
+- `ChatException`
 
 `InfobipHuaweiChatMessagePayload` represents outbound text messages.
 
 `InfobipHuaweiChatError` represents typed Chat view lifecycle and availability
 errors.
+
+`ChatException` matches the official Flutter model's nullable `message` and
+`name` fields. Huawei SDK 8.14.0 supplies both through its native Chat exception
+callback; no stack trace, native object, HTTP status, identity, or credentials
+are exposed.
+
+### Chat exception mapping audit
+
+The desired API is the official Flutter
+`setChatExceptionHandler(Future<void> Function(ChatException)?, [onError])` at
+commit `8b630d0f736d400635317131d549c345349bd54d`. The native audit is pinned to
+Huawei commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, corresponding to SDK
+8.14.0.
+
+| Official Flutter API / field | Huawei 8.14.0 source | Classification |
+| --- | --- | --- |
+| `setChatExceptionHandler(handler, onError)` | `InAppChat.setExceptionHandler` | **MAPPABLE** |
+| Replace the current handler | Singleton `InAppChat` handler property | **EXACT** |
+| `null` restores default handling | `InAppChat.setExceptionHandler(null)` | **EXACT** |
+| `ChatException.message` (`String?`) | Native exception `message` | **EXACT** |
+| `ChatException.name` (`String?`) | Native exception `name` | **EXACT** |
+| iOS behavior | No iOS implementation in this Huawei plugin | **IOS_ONLY** |
 
 ---
 

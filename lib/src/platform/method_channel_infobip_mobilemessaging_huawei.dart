@@ -167,6 +167,12 @@ final class MethodChannelInfobipMobileMessagingHuawei
   );
 
   @override
+  Future<void> setChatExceptionHandler({required bool enabled}) => methodChannel
+      .invokeMethod<void>(ChannelContract.setChatExceptionHandler, {
+        ChannelContract.enabled: enabled,
+      });
+
+  @override
   Future<void> resolveChatJwt(String jwt) => methodChannel.invokeMethod<void>(
     ChannelContract.resolveChatJwt,
     {ChannelContract.jwt: jwt},

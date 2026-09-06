@@ -99,6 +99,30 @@ internal class ChatManager(
         ChatFailure("native_error", "Unable to register Chat JWT provider")
     }
 
+    @Synchronized
+    fun setExceptionHandler(
+        enabled: Any?,
+        emit: (Map<String, String?>) -> Unit,
+    ): ChatFailure? {
+        if (enabled !is Boolean) {
+            return ChatFailure("invalid_argument", "enabled must be a boolean")
+        }
+        return try {
+            inAppChat.setExceptionHandler(
+                if (enabled) {
+                    { exception ->
+                        emit(ChatExceptionMapper.toMap(exception.message, exception.name))
+                    }
+                } else {
+                    null
+                },
+            )
+            null
+        } catch (_: Exception) {
+            ChatFailure("native_error", "Unable to configure Chat exception handler")
+        }
+    }
+
     fun resolveJwt(jwt: Any?): ChatFailure? =
         if (jwtBridge.resolve(jwt)) null
         else ChatFailure("invalid_argument", "No pending Chat JWT request or JWT is invalid")
@@ -126,6 +150,7 @@ internal class ChatManager(
 
     fun detach() {
         clearJwtProvider()
+        clearExceptionHandler()
     }
 
     @Synchronized
@@ -136,6 +161,10 @@ internal class ChatManager(
     fun clearJwtProvider() {
         jwtBridge.clear()
         runCatching { inAppChat.setWidgetJwtProvider(null) }
+    }
+
+    fun clearExceptionHandler() {
+        runCatching { inAppChat.setExceptionHandler(null) }
     }
 
     private companion object {
