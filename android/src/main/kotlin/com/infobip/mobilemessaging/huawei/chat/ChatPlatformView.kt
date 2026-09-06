@@ -16,9 +16,10 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import org.infobip.mobile.messaging.chat.core.MultithreadStrategy
+import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetResult
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetView
-import org.infobip.mobile.messaging.chat.view.InAppChatFragment
 import org.infobip.mobile.messaging.chat.view.DefaultInAppChatFragmentEventsListener
+import org.infobip.mobile.messaging.chat.view.InAppChatFragment
 
 internal class ChatPlatformView(
     context: Context,
@@ -92,14 +93,28 @@ internal class ChatPlatformView(
                             publishRuntimeEvent(ChannelContract.CHAT_VIEW_CHANGED, view.name)
                         }
                     }
-                    override fun onChatLoadingFinished() {
-                        publishRuntimeEvent(ChannelContract.CHAT_LOADED)
+                    override fun onChatLoadingFinished(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeResult(
+                            result,
+                            ChannelContract.CHAT_LOADED,
+                            failureMessage = "Chat loading failed",
+                        )
                     }
-                    override fun onChatConnectionResumed() {
-                        publishRuntimeEvent(ChannelContract.CHAT_CONNECTION_CHANGED, "CONNECTED")
+                    override fun onChatConnectionResumed(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeResult(
+                            result,
+                            ChannelContract.CHAT_CONNECTION_CHANGED,
+                            value = "CONNECTED",
+                            failureMessage = "Chat connection could not be resumed",
+                        )
                     }
-                    override fun onChatConnectionPaused() {
-                        publishRuntimeEvent(ChannelContract.CHAT_CONNECTION_CHANGED, "DISCONNECTED")
+                    override fun onChatConnectionPaused(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeResult(
+                            result,
+                            ChannelContract.CHAT_CONNECTION_CHANGED,
+                            value = "DISCONNECTED",
+                            failureMessage = "Chat connection could not be paused",
+                        )
                     }
                     override fun onChatAttachmentPreviewOpened(
                         url: String?,
@@ -278,6 +293,19 @@ internal class ChatPlatformView(
         val payload = mutableMapOf(ChannelContract.EVENT to event)
         value?.let { payload[ChannelContract.VALUE] = it }
         runtimeEvents.publish(payload)
+    }
+
+    private fun publishRuntimeResult(
+        result: LivechatWidgetResult<Unit>,
+        event: String,
+        value: String? = null,
+        failureMessage: String,
+    ) {
+        val payload = mutableMapOf(ChannelContract.EVENT to event)
+        value?.let { payload[ChannelContract.VALUE] = it }
+        runtimeEvents.publishResult(result is LivechatWidgetResult.Success, payload) {
+            reportError(ChatViewError("chat_runtime_error", failureMessage))
+        }
     }
 
     private fun neutralView(context: Context, error: ChatViewError): View {

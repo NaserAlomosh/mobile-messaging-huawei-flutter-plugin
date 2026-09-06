@@ -18,6 +18,14 @@ internal class ChatRuntimeEventBridge(
         pending.addLast(event)
     }
 
+    fun publishResult(
+        successful: Boolean,
+        event: Map<String, String>,
+        onFailure: () -> Unit,
+    ) {
+        if (successful) publish(event) else onFailure()
+    }
+
     fun ready() {
         if (disposed || ready) return
         ready = true
