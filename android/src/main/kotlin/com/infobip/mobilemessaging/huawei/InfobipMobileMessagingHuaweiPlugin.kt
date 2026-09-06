@@ -6,7 +6,9 @@ import android.os.Handler
 import android.os.Looper
 import com.infobip.mobilemessaging.huawei.chat.ChatManager
 import com.infobip.mobilemessaging.huawei.chat.ChatPlatformViewFactory
+import com.infobip.mobilemessaging.huawei.core.CleanupManager
 import com.infobip.mobilemessaging.huawei.core.MobileMessagingInitializer
+import com.infobip.mobilemessaging.huawei.event.CustomEventManager
 import com.infobip.mobilemessaging.huawei.inbox.InboxManager
 import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
@@ -27,10 +29,12 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
     private var initializer: MobileMessagingInitializer? = null
+    private var cleanupManager: CleanupManager? = null
     private var applicationContext: Context? = null
     private var eventBridge: NativeEventBridge? = null
     private var userManager: UserManager? = null
     private var installationManager: InstallationManager? = null
+    private var customEventManager: CustomEventManager? = null
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -42,6 +46,7 @@ class InfobipMobileMessagingHuaweiPlugin :
             ChatManager(
                 context = binding.applicationContext,
                 initialized = { initializer?.isInitialized == true },
+                requestDartJwt = { eventBridge?.emitChatJwtRequested() == true },
             )
         initializer =
             MobileMessagingInitializer(binding.applicationContext) {
@@ -57,10 +62,28 @@ class InfobipMobileMessagingHuaweiPlugin :
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
             )
+        customEventManager =
+            CustomEventManager(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+            )
         inboxManager =
             InboxManager(
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
+            )
+        cleanupManager =
+            CleanupManager(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+                clearPluginJwtState = {
+                    inboxManager?.clearJwtState()
+                    chatManager?.clearJwtProvider()
+                },
+                resetPluginState = {
+                    initializer?.reset()
+                    chatManager?.resetAfterCleanup()
+                },
             )
         eventBridge = NativeEventBridge(binding.applicationContext).also { it.register() }
         methodChannel =
@@ -90,9 +113,11 @@ class InfobipMobileMessagingHuaweiPlugin :
         methodChannel = null
         eventChannel = null
         initializer = null
+        cleanupManager = null
         eventBridge = null
         userManager = null
         installationManager = null
+        customEventManager = null
         inboxManager = null
         chatManager = null
         applicationContext = null
@@ -122,6 +147,13 @@ class InfobipMobileMessagingHuaweiPlugin :
         when (call.method) {
             ChannelContract.INITIALIZE -> {
                 initialize(call, result)
+            }
+
+            ChannelContract.CLEANUP -> {
+                val manager = cleanupManager ?: return detached(result)
+                val error = manager.cleanup()
+                if (error == null) result.success(null)
+                else result.error(error.code, error.message, error.details)
             }
 
             ChannelContract.REGISTER_FOR_REMOTE_NOTIFICATIONS -> {
@@ -169,6 +201,20 @@ class InfobipMobileMessagingHuaweiPlugin :
                 } ?: detached(result)
             }
 
+            ChannelContract.SUBMIT_EVENT -> {
+                customEventManager?.submit(
+                    call.argument<Any?>(ChannelContract.CUSTOM_EVENT),
+                ) { _, failure -> result.completeCustomEvent(null, failure) }
+                    ?: detached(result)
+            }
+
+            ChannelContract.SUBMIT_EVENT_IMMEDIATELY -> {
+                customEventManager?.submitImmediately(
+                    call.argument<Any?>(ChannelContract.CUSTOM_EVENT),
+                ) { event, failure -> result.completeCustomEvent(event, failure) }
+                    ?: detached(result)
+            }
+
             ChannelContract.SET_JWT -> {
                 try {
                     inboxManager?.setJwt(call.argument<Any?>(ChannelContract.JWT))
@@ -177,6 +223,26 @@ class InfobipMobileMessagingHuaweiPlugin :
                 } catch (_: IllegalArgumentException) {
                     result.error("invalid_argument", "jwt must be a string or null", null)
                 }
+            }
+
+            ChannelContract.SET_CHAT_JWT_PROVIDER -> {
+                val failure = chatManager?.setJwtProvider() ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.RESOLVE_CHAT_JWT -> {
+                val failure = chatManager?.resolveJwt(call.argument<Any?>(ChannelContract.JWT))
+                    ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.REJECT_CHAT_JWT -> {
+                val failure = chatManager?.rejectJwt(call.argument<Any?>(ChannelContract.ERROR))
+                    ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.GET_INSTALLATION -> {
@@ -198,6 +264,21 @@ class InfobipMobileMessagingHuaweiPlugin :
                     call.argument<Any?>(ChannelContract.INSTALLATION),
                     { value, failure -> result.completeInstallation(value, failure) },
                 ) ?: detached(result)
+            }
+
+            ChannelContract.DEPERSONALIZE_INSTALLATION -> {
+                installationManager?.depersonalizeInstallation(
+                    call.argument<Any?>(ChannelContract.PUSH_REGISTRATION_ID),
+                ) { installations, failure -> result.completeInstallations(installations, failure) }
+                    ?: detached(result)
+            }
+
+            ChannelContract.SET_INSTALLATION_AS_PRIMARY -> {
+                installationManager?.setInstallationAsPrimary(
+                    call.argument<Any?>(ChannelContract.PUSH_REGISTRATION_ID),
+                    call.argument<Any?>(ChannelContract.IS_PRIMARY),
+                ) { installations, failure -> result.completeInstallations(installations, failure) }
+                    ?: detached(result)
             }
 
             ChannelContract.FETCH_INBOX -> {
@@ -225,6 +306,24 @@ class InfobipMobileMessagingHuaweiPlugin :
                         } else {
                             result.error(failure.code, failure.message, null)
                         }
+                    }
+                } ?: detached(result)
+            }
+
+            ChannelContract.IS_CHAT_AVAILABLE -> {
+                chatManager?.isChatAvailable { available, failure ->
+                    mainHandler.post {
+                        if (failure == null) result.success(available)
+                        else result.error(failure.code, failure.message, null)
+                    }
+                } ?: detached(result)
+            }
+
+            ChannelContract.RESET_CHAT_MESSAGE_COUNTER -> {
+                chatManager?.resetMessageCounter { _, failure ->
+                    mainHandler.post {
+                        if (failure == null) result.success(null)
+                        else result.error(failure.code, failure.message, null)
                     }
                 } ?: detached(result)
             }
@@ -274,6 +373,20 @@ class InfobipMobileMessagingHuaweiPlugin :
         }
     }
 
+    private fun MethodChannel.Result.completeInstallations(
+        installations: List<Map<String, Any?>>?,
+        failure: com.infobip.mobilemessaging.huawei.installation.InstallationFailure?,
+    ) {
+        if (failure == null) success(installations) else error(failure.code, failure.message, failure.details)
+    }
+
+    private fun MethodChannel.Result.completeCustomEvent(
+        event: Map<String, Any?>?,
+        failure: com.infobip.mobilemessaging.huawei.event.CustomEventFailure?,
+    ) {
+        if (failure == null) success(event) else error(failure.code, failure.message, failure.details)
+    }
+
     private fun MethodChannel.Result.completeInbox(
         inbox: Map<String, Any?>?,
         failure: com.infobip.mobilemessaging.huawei.inbox.InboxFailure?,
@@ -319,5 +432,6 @@ class InfobipMobileMessagingHuaweiPlugin :
 
     override fun onCancel(arguments: Any?) {
         eventBridge?.cancel()
+        chatManager?.detach()
     }
 }

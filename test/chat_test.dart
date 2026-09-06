@@ -34,6 +34,20 @@ void main() {
       controller.getWidgetTheme(),
       throwsA(isA<PlatformException>()),
     );
+    await expectLater(
+      controller.isMultithread(),
+      throwsA(isA<PlatformException>()),
+    );
+    await expectLater(
+      controller.showThreadsList(),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          'code',
+          'chat_unavailable',
+        ),
+      ),
+    );
   });
 
   test('text payload rejects empty text', () {
@@ -196,6 +210,58 @@ void main() {
       expect(await controller.navigateBackOrCloseChat(), isTrue);
     });
 
+    testWidgets('controller requests the thread list on its view channel', (
+      tester,
+    ) async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        calls.add(call);
+        return null;
+      });
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await controller.showThreadsList();
+
+      expect(
+        calls.where((call) => call.method == 'showThreadsList'),
+        hasLength(1),
+      );
+      expect(calls.last.arguments, isNull);
+    });
+
+    testWidgets('thread list request forwards a native platform error', (
+      tester,
+    ) async {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel(channelName),
+        (call) async {
+          if (call.method == 'showThreadsList') {
+            throw PlatformException(
+              code: 'native_error',
+              message: 'Chat operation failed',
+            );
+          }
+          return null;
+        },
+      );
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await expectLater(
+        controller.showThreadsList(),
+        throwsA(
+          isA<PlatformException>().having(
+            (error) => error.code,
+            'code',
+            'native_error',
+          ),
+        ),
+      );
+    });
+
     testWidgets('controller accepts a false navigation result', (
       tester,
     ) async {
@@ -208,6 +274,34 @@ void main() {
       await mountView(tester, controller: controller);
 
       expect(await controller.navigateBackOrCloseChat(), isFalse);
+    });
+
+    for (final value in [true, false]) {
+      testWidgets('controller returns $value for multithread state', (
+        tester,
+      ) async {
+        messenger.setMockMethodCallHandler(
+          const MethodChannel(channelName),
+          (call) async => call.method == 'isMultithread' ? value : null,
+        );
+        final controller = InfobipHuaweiChatController();
+        await mountView(tester, controller: controller);
+
+        expect(await controller.isMultithread(), value);
+      });
+    }
+
+    testWidgets('controller rejects malformed multithread state', (
+      tester,
+    ) async {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel(channelName),
+        (call) async => call.method == 'isMultithread' ? 1 : null,
+      );
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await expectLater(controller.isMultithread(), throwsFormatException);
     });
 
     testWidgets('controller sends text on its view channel', (tester) async {

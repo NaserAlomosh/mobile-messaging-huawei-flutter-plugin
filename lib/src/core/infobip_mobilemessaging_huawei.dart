@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import '../notifications/notifications.dart';
+import '../platform/channel_contract.dart';
 import '../platform/infobip_mobilemessaging_huawei_platform.dart';
 import '../user/user.dart';
 import '../installation/installation.dart';
 import '../inbox/inbox.dart';
 import '../chat/chat.dart';
+import '../custom_event/custom_event.dart';
 
 /// Entry point for the Infobip Huawei Mobile Messaging plugin.
 final class InfobipMobileMessagingHuawei {
@@ -15,6 +19,10 @@ final class InfobipMobileMessagingHuawei {
 
   /// Global Chat state and events.
   static InfobipHuaweiChat get chat => InfobipHuaweiChat.instance;
+
+  static Future<String> Function()? _chatJwtProvider;
+  static void Function(Object error)? _chatJwtProviderErrorHandler;
+  static StreamSubscription<Object?>? _chatJwtSubscription;
 
   /// Initializes the native SDK with an Infobip application code.
   ///
@@ -31,6 +39,18 @@ final class InfobipMobileMessagingHuawei {
     return InfobipMobileMessagingHuaweiPlatform.instance.initialize(
       applicationCode: applicationCode,
     );
+  }
+
+  /// Removes local Mobile Messaging SDK data and state.
+  ///
+  /// Initialize the SDK again before further use. For signing a user out, use
+  /// [depersonalize] instead.
+  static Future<void> cleanup() async {
+    await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
+    _chatJwtProvider = null;
+    _chatJwtProviderErrorHandler = null;
+    await _chatJwtSubscription?.cancel();
+    _chatJwtSubscription = null;
   }
 
   /// Asks the Infobip SDK to register this installation for remote
@@ -77,6 +97,53 @@ final class InfobipMobileMessagingHuawei {
   static Future<void> depersonalize() =>
       InfobipMobileMessagingHuaweiPlatform.instance.depersonalize();
 
+  /// Queues [event] for submission using the Huawei SDK.
+  static Future<void> submitEvent(InfobipHuaweiCustomEvent event) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.submitEvent(event);
+
+  /// Submits [event] and completes after the Huawei SDK callback succeeds.
+  static Future<InfobipHuaweiCustomEvent> submitEventImmediately(
+    InfobipHuaweiCustomEvent event,
+  ) => InfobipMobileMessagingHuaweiPlatform.instance.submitEventImmediately(
+    event,
+  );
+
+  /// Depersonalizes the installation identified by [pushRegistrationId].
+  static Future<List<Installation>> depersonalizeInstallation(
+    String pushRegistrationId,
+  ) {
+    final id = pushRegistrationId.trim();
+    if (id.isEmpty) {
+      throw ArgumentError.value(
+        pushRegistrationId,
+        'pushRegistrationId',
+        'Must not be empty or whitespace-only',
+      );
+    }
+    return InfobipMobileMessagingHuaweiPlatform.instance
+        .depersonalizeInstallation(id);
+  }
+
+  /// Changes primary status for the installation identified by its push ID.
+  static Future<List<Installation>> setInstallationAsPrimary({
+    required String pushRegistrationId,
+    required bool isPrimary,
+  }) {
+    final id = pushRegistrationId.trim();
+    if (id.isEmpty) {
+      throw ArgumentError.value(
+        pushRegistrationId,
+        'pushRegistrationId',
+        'Must not be empty or whitespace-only',
+      );
+    }
+    return InfobipMobileMessagingHuaweiPlatform.instance
+        .setInstallationAsPrimary(
+          pushRegistrationId: id,
+          isPrimary: isPrimary,
+        );
+  }
+
   /// Configures the memory-only Infobip JWT used by native SDK requests.
   ///
   /// Passing `null` or a whitespace-only value clears the current JWT.
@@ -84,6 +151,79 @@ final class InfobipMobileMessagingHuawei {
       InfobipMobileMessagingHuaweiPlatform.instance.setJwt(
         jwt?.trim().isEmpty == true ? null : jwt?.trim(),
       );
+
+  /// Registers the asynchronous provider used for In-App Chat authentication.
+  ///
+  /// The native Chat SDK may invoke [jwtProvider] repeatedly, including after
+  /// reconnection and lifecycle changes. Return a fresh, non-empty JWT for
+  /// every invocation. This provider is separate from [setJwt], which
+  /// configures Mobile Messaging and Inbox authorization.
+  static Future<void> setChatJwtProvider(
+    Future<String> Function() jwtProvider, [
+    void Function(Object error)? onError,
+  ]) async {
+    _chatJwtProvider = jwtProvider;
+    _chatJwtProviderErrorHandler = onError;
+    await _chatJwtSubscription?.cancel();
+    _chatJwtSubscription = InfobipMobileMessagingHuaweiPlatform.instance.events
+        .where(_isChatJwtRequest)
+        .listen((_) => _provideChatJwt());
+    try {
+      await InfobipMobileMessagingHuaweiPlatform.instance.setChatJwtProvider();
+    } on Object {
+      _chatJwtProvider = null;
+      _chatJwtProviderErrorHandler = null;
+      await _chatJwtSubscription?.cancel();
+      _chatJwtSubscription = null;
+      rethrow;
+    }
+  }
+
+  static bool _isChatJwtRequest(Object? event) =>
+      event is Map &&
+      event['version'] == ChannelContract.eventVersion &&
+      event['type'] == ChannelContract.chatJwtRequested &&
+      event['payload'] is Map;
+
+  static Future<void> _provideChatJwt() async {
+    final platform = InfobipMobileMessagingHuaweiPlatform.instance;
+    final provider = _chatJwtProvider;
+    if (provider == null) {
+      await _rejectChatJwt(platform, 'Chat JWT provider is not registered');
+      return;
+    }
+    late final String jwt;
+    try {
+      jwt = (await provider()).trim();
+      if (jwt.isEmpty) {
+        throw const FormatException('Chat JWT must not be empty');
+      }
+    } on Object catch (error) {
+      try {
+        _chatJwtProviderErrorHandler?.call(error);
+      } on Object {
+        // A host error handler must not prevent the native callback completing.
+      }
+      await _rejectChatJwt(platform, 'Unable to provide Chat JWT');
+      return;
+    }
+    try {
+      await platform.resolveChatJwt(jwt);
+    } on Object {
+      // Native teardown may race an in-flight provider result.
+    }
+  }
+
+  static Future<void> _rejectChatJwt(
+    InfobipMobileMessagingHuaweiPlatform platform,
+    String error,
+  ) async {
+    try {
+      await platform.rejectChatJwt(error);
+    } on Object {
+      // Native teardown may race an in-flight provider failure.
+    }
+  }
 
   /// Returns the locally cached installation without network access.
   static Future<Installation> getInstallation() =>

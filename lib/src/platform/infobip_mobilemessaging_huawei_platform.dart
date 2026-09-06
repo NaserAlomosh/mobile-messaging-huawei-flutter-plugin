@@ -4,6 +4,7 @@ import 'method_channel_infobip_mobilemessaging_huawei.dart';
 import '../user/user.dart';
 import '../installation/installation.dart';
 import '../inbox/inbox.dart';
+import '../custom_event/custom_event.dart';
 
 abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   InfobipMobileMessagingHuaweiPlatform() : super(token: _token);
@@ -24,6 +25,8 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Future<void> initialize({required String applicationCode});
 
+  Future<void> cleanup() => throw UnimplementedError();
+
   Future<void> registerForRemoteNotifications() => throw UnimplementedError();
 
   Future<int> getChatUnreadMessageCount() => throw UnimplementedError();
@@ -42,7 +45,29 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Future<void> depersonalize() => throw UnimplementedError();
 
+  Future<void> submitEvent(InfobipHuaweiCustomEvent event) =>
+      throw UnimplementedError();
+
+  Future<InfobipHuaweiCustomEvent> submitEventImmediately(
+    InfobipHuaweiCustomEvent event,
+  ) => throw UnimplementedError();
+
+  Future<List<Installation>> depersonalizeInstallation(
+    String pushRegistrationId,
+  ) => throw UnimplementedError();
+
+  Future<List<Installation>> setInstallationAsPrimary({
+    required String pushRegistrationId,
+    required bool isPrimary,
+  }) => throw UnimplementedError();
+
   Future<void> setJwt(String? jwt) => throw UnimplementedError();
+
+  Future<void> setChatJwtProvider() => throw UnimplementedError();
+
+  Future<void> resolveChatJwt(String jwt) => throw UnimplementedError();
+
+  Future<void> rejectChatJwt(String error) => throw UnimplementedError();
 
   Future<Installation> getInstallation() => throw UnimplementedError();
 

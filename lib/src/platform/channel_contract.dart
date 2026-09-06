@@ -5,6 +5,8 @@ abstract final class ChannelContract {
   static const chatViewChannel =
       'com.infobip.mobilemessaging.huawei/chat_view/';
   static const chatNavigateBack = 'navigateBackOrCloseChat';
+  static const chatShowThreadsList = 'showThreadsList';
+  static const chatIsMultithread = 'isMultithread';
   static const chatSend = 'send';
   static const chatSendContextualData = 'sendContextualData';
   static const chatSetLanguage = 'setLanguage';
@@ -13,12 +15,19 @@ abstract final class ChannelContract {
   static const chatGetWidgetTheme = 'getWidgetTheme';
   static const chatViewReady = 'viewReady';
   static const chatOnError = 'onError';
+  static const chatOnRuntimeEvent = 'onRuntimeEvent';
+  static const chatLoaded = 'loaded';
+  static const chatViewChanged = 'viewChanged';
+  static const chatConnectionChanged = 'connectionChanged';
+  static const event = 'event';
+  static const value = 'value';
   static const code = 'code';
   static const message = 'message';
   static const text = 'text';
   static const data = 'data';
   static const widgetTheme = 'widgetTheme';
   static const initialize = 'initialize';
+  static const cleanup = 'cleanup';
   static const registerForRemoteNotifications =
       'registerForRemoteNotifications';
   static const applicationCode = 'applicationCode';
@@ -27,8 +36,22 @@ abstract final class ChannelContract {
   static const saveUser = 'saveUser';
   static const personalize = 'personalize';
   static const depersonalize = 'depersonalize';
+  static const submitEvent = 'submitEvent';
+  static const submitEventImmediately = 'submitEventImmediately';
+  static const customEvent = 'customEvent';
+  static const definitionId = 'definitionId';
+  static const eventId = 'eventId';
+  static const createdAt = 'createdAt';
+  static const properties = 'properties';
+  static const depersonalizeInstallation = 'depersonalizeInstallation';
+  static const setInstallationAsPrimary = 'setInstallationAsPrimary';
+  static const isPrimary = 'isPrimary';
   static const setJwt = 'setJwt';
+  static const setChatJwtProvider = 'setChatJwtProvider';
+  static const resolveChatJwt = 'resolveChatJwt';
+  static const rejectChatJwt = 'rejectChatJwt';
   static const jwt = 'jwt';
+  static const error = 'error';
   static const getInstallation = 'getInstallation';
   static const fetchInstallation = 'fetchInstallation';
   static const saveInstallation = 'saveInstallation';
@@ -100,6 +123,8 @@ abstract final class ChannelContract {
   static const deepLink = 'deepLink';
   static const isSilent = 'isSilent';
   static const getChatUnreadMessageCount = 'getChatUnreadMessageCount';
+  static const isChatAvailable = 'isChatAvailable';
+  static const resetChatMessageCounter = 'resetChatMessageCounter';
   static const count = 'count';
 
   static const eventVersion = 1;
@@ -108,6 +133,10 @@ abstract final class ChannelContract {
   static const notificationActionTapped = 'notification_action_tapped';
   static const registrationUpdated = 'registration_updated';
   static const installationUpdated = 'installation_updated';
+  static const userUpdated = 'user_updated';
+  static const personalized = 'personalized';
+  static const depersonalized = 'depersonalized';
   static const chatUnreadMessageCounterUpdated =
       'chat_unread_message_counter_updated';
+  static const chatJwtRequested = 'chat_jwt_requested';
 }
