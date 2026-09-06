@@ -65,6 +65,9 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Future<void> setChatJwtProvider() => throw UnimplementedError();
 
+  Future<void> setChatExceptionHandler({required bool enabled}) =>
+      throw UnimplementedError();
+
   Future<void> resolveChatJwt(String jwt) => throw UnimplementedError();
 
   Future<void> rejectChatJwt(String error) => throw UnimplementedError();

@@ -7,6 +7,7 @@ import '../user/user.dart';
 import '../installation/installation.dart';
 import '../inbox/inbox.dart';
 import '../chat/chat.dart';
+import '../chat/chat_exception.dart';
 import '../custom_event/custom_event.dart';
 
 /// Entry point for the Infobip Huawei Mobile Messaging plugin.
@@ -23,6 +24,9 @@ final class InfobipMobileMessagingHuawei {
   static Future<String> Function()? _chatJwtProvider;
   static void Function(Object error)? _chatJwtProviderErrorHandler;
   static StreamSubscription<Object?>? _chatJwtSubscription;
+  static Future<void> Function(ChatException exception)? _chatExceptionHandler;
+  static void Function(Object error)? _chatExceptionErrorHandler;
+  static StreamSubscription<Object?>? _chatExceptionSubscription;
 
   /// Initializes the native SDK with an Infobip application code.
   ///
@@ -46,11 +50,18 @@ final class InfobipMobileMessagingHuawei {
   /// Initialize the SDK again before further use. For signing a user out, use
   /// [depersonalize] instead.
   static Future<void> cleanup() async {
-    await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
-    _chatJwtProvider = null;
-    _chatJwtProviderErrorHandler = null;
-    await _chatJwtSubscription?.cancel();
-    _chatJwtSubscription = null;
+    try {
+      await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
+    } finally {
+      _chatJwtProvider = null;
+      _chatJwtProviderErrorHandler = null;
+      await _chatJwtSubscription?.cancel();
+      _chatJwtSubscription = null;
+      _chatExceptionHandler = null;
+      _chatExceptionErrorHandler = null;
+      await _chatExceptionSubscription?.cancel();
+      _chatExceptionSubscription = null;
+    }
   }
 
   /// Asks the Infobip SDK to register this installation for remote
@@ -176,6 +187,70 @@ final class InfobipMobileMessagingHuawei {
       await _chatJwtSubscription?.cancel();
       _chatJwtSubscription = null;
       rethrow;
+    }
+  }
+
+  /// Registers a handler for exceptions reported by the native Chat widget.
+  ///
+  /// Passing `null` removes the custom handler and restores the native SDK's
+  /// default exception handling.
+  static Future<void> setChatExceptionHandler(
+    Future<void> Function(ChatException exception)? exceptionHandler, [
+    void Function(Object error)? onError,
+  ]) async {
+    await _chatExceptionSubscription?.cancel();
+    _chatExceptionSubscription = null;
+    _chatExceptionHandler = exceptionHandler;
+    _chatExceptionErrorHandler = exceptionHandler == null ? null : onError;
+
+    if (exceptionHandler != null) {
+      _chatExceptionSubscription = InfobipMobileMessagingHuaweiPlatform
+          .instance
+          .events
+          .where(_isChatException)
+          .listen(_handleChatException);
+    }
+
+    try {
+      await InfobipMobileMessagingHuaweiPlatform.instance
+          .setChatExceptionHandler(enabled: exceptionHandler != null);
+    } on Object {
+      _chatExceptionHandler = null;
+      _chatExceptionErrorHandler = null;
+      await _chatExceptionSubscription?.cancel();
+      _chatExceptionSubscription = null;
+      rethrow;
+    }
+  }
+
+  static bool _isChatException(Object? event) =>
+      event is Map &&
+      event['version'] == ChannelContract.eventVersion &&
+      event['type'] == ChannelContract.chatException &&
+      event['payload'] is Map;
+
+  static Future<void> _handleChatException(Object? event) async {
+    final handler = _chatExceptionHandler;
+    if (handler == null || event is! Map) return;
+    final payload = event['payload'];
+    if (payload is! Map) return;
+    final message = payload[ChannelContract.message];
+    final name = payload[ChannelContract.name];
+    if ((message != null && message is! String) ||
+        (name != null && name is! String)) {
+      return;
+    }
+    final errorHandler = _chatExceptionErrorHandler;
+    try {
+      await handler(
+        ChatException(message: message as String?, name: name as String?),
+      );
+    } on Object catch (error) {
+      try {
+        errorHandler?.call(error);
+      } on Object {
+        // Host callback failures must not terminate the native event stream.
+      }
     }
   }
 
